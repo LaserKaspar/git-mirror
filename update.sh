@@ -53,4 +53,4 @@ fi
 
 echo pushing
 
-git push
+git push #-f
