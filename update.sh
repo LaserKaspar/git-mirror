@@ -1,3 +1,8 @@
+#!/bin/bash
+
+# Source the configuration file
+source config.sh
+
 cd project-clone
 
 echo fetching
@@ -11,45 +16,31 @@ cp -u -R project-clone/. project-modified
 
 cd project-modified
 
-git remote set-url origin --push git@gameprojects.spengergasse.at:KAS19559/5ahmng_2223_snowboards.git
+git remote set-url origin --push "$target_repo"
 
 echo filtering
 
-# Change usernames
-
 export FILTER_BRANCH_SQUELCH_WARNING=1
 
-git filter-branch -f --env-filter '
-OLD_EMAIL="ich@felixkaspar.com"
-CORRECT_NAME="Kaspar Felix"
-CORRECT_EMAIL="KAS19559@spengergasse.at"
+# Build the filter-branch command dynamically
+filter_cmd="git filter-branch -f --env-filter '"
 
-if [ "$GIT_COMMITTER_EMAIL" = "$OLD_EMAIL" ]
-then
-    export GIT_COMMITTER_NAME="$CORRECT_NAME"
-    export GIT_COMMITTER_EMAIL="$CORRECT_EMAIL"
-fi
-if [ "$GIT_AUTHOR_EMAIL" = "$OLD_EMAIL" ]
-then
-    export GIT_AUTHOR_NAME="$CORRECT_NAME"
-    export GIT_AUTHOR_EMAIL="$CORRECT_EMAIL"
-fi
+for old_email in "${!email_mappings[@]}"; do
+    new_author="${email_mappings[$old_email]}"
+    filter_cmd+="
+        if [ \"\$GIT_COMMITTER_EMAIL\" = \"$old_email\" ]; then
+            export GIT_COMMITTER_EMAIL=\"$(echo $new_author | cut -d' ' -f1)\"
+            export GIT_COMMITTER_NAME=\"$(echo $new_author | cut -d' ' -f2-)\"
+        fi
+        if [ \"\$GIT_AUTHOR_EMAIL\" = \"$old_email\" ]; then
+            export GIT_AUTHOR_EMAIL=\"$(echo $new_author | cut -d' ' -f1)\"
+            export GIT_AUTHOR_NAME=\"$(echo $new_author | cut -d' ' -f2-)\"
+        fi
+    "
+done
 
-OLD_EMAIL="51358097+ThatDragonn@users.noreply.github.com"
-CORRECT_NAME="Simon Buketits"
-CORRECT_EMAIL="BUK19444@spengergasse.at"
-
-if [ "$GIT_COMMITTER_EMAIL" = "$OLD_EMAIL" ]
-then
-    export GIT_COMMITTER_NAME="$CORRECT_NAME"
-    export GIT_COMMITTER_EMAIL="$CORRECT_EMAIL"
-fi
-if [ "$GIT_AUTHOR_EMAIL" = "$OLD_EMAIL" ]
-then
-    export GIT_AUTHOR_NAME="$CORRECT_NAME"
-    export GIT_AUTHOR_EMAIL="$CORRECT_EMAIL"
-fi
-' --tag-name-filter cat -- --branches --tags
+filter_cmd+=" ' --tag-name-filter cat -- --branches --tags"
+eval "$filter_cmd"
 
 echo pushing
 

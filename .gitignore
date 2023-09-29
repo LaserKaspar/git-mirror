@@ -1,3 +1,4 @@
 project-clone
 project-modified
 .ssh
+*.code-workspace
